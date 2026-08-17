@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUCID — Language-driven Understanding &amp; Causal Insight Discovery</title>
+<style>
+  :root{
+    --ink:#0A0E1A;
+    --panel:#121826;
+    --panel-raised:#1A2233;
+    --hairline:#26304A;
+    --hairline-soft:#1E2740;
+    --amber:#E3A857;
+    --amber-dim:#8A6A38;
+    --cyan:#57C7D6;
+    --red:#E2604F;
+    --green:#6FBF8B;
+    --text:#ECEFF6;
+    --text-muted:#8B93A8;
+    --text-dim:#565F78;
+    --display: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Consolas", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--text);font-family:var(--body);}
+  body{-webkit-font-smoothing:antialiased;}
+  ::selection{background:var(--amber-dim);color:var(--text);}
+
+  /* ---------- layout shell ---------- */
+  .app{min-height:100vh;display:flex;flex-direction:column;}
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 28px;border-bottom:1px solid var(--hairline-soft);
+    background:linear-gradient(180deg,#0D1220,#0A0E1A);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:baseline;gap:12px;}
+  .brand .mark{
+    font-family:var(--display);font-size:26px;letter-spacing:0.5px;color:var(--text);
+    font-style:italic;
+  }
+  .brand .mark b{color:var(--amber);font-style:normal;}
+  .brand .tag{font-size:11.5px;color:var(--text-dim);letter-spacing:0.4px;font-family:var(--mono);}
+  nav.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--hairline);border-radius:10px;padding:3px;}
+  nav.tabs button{
+    background:transparent;border:none;color:var(--text-muted);font-family:var(--body);
+    font-size:13px;padding:8px 16px;border-radius:8px;cursor:pointer;letter-spacing:0.2px;
+    transition:all .15s ease;
+  }
+  nav.tabs button.active{background:var(--panel-raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--hairline);}
+  nav.tabs button:hover:not(.active){color:var(--text);}
+
+  main{flex:1;display:grid;grid-template-columns:320px 1fr;gap:0;}
+  @media (max-width:860px){ main{grid-template-columns:1fr;} }
+
+  aside.sidebar{
+    border-right:1px solid var(--hairline-soft);padding:22px 20px 40px;
+    background:#0C111F;
+  }
+  section.content{padding:26px 32px 60px;max-width:980px;}
+
+  .card{
+    background:var(--panel);border:1px solid var(--hairline);border-radius:12px;
+    padding:16px 18px;margin-bottom:16px;
+  }
+  .card h3{margin:0 0 10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);font-weight:600;}
+
+  /* pipeline ribbon */
+  .pipeline{display:flex;gap:6px;margin-bottom:18px;}
+  .pipeline .stage{
+    flex:1;text-align:center;padding:7px 4px;border-radius:7px;background:var(--panel-raised);
+    border:1px solid var(--hairline);font-family:var(--mono);font-size:10px;color:var(--text-dim);
+    letter-spacing:0.5px;transition:all .3s ease;
+  }
+  .pipeline .stage.active{background:var(--amber-dim);color:#fff;border-color:var(--amber);}
+  .pipeline .stage.done{background:#17301F;color:var(--green);border-color:#2C5B3E;}
+
+  /* upload zone */
+  .dropzone{
+    border:1.5px dashed var(--hairline);border-radius:10px;padding:22px 14px;text-align:center;
+    cursor:pointer;transition:all .15s ease;background:var(--panel-raised);
+  }
+  .dropzone:hover{border-color:var(--amber);background:#1E2740;}
+  .dropzone.drag{border-color:var(--cyan);background:#182634;}
+  .dropzone svg{margin-bottom:8px;opacity:0.6;}
+  .dropzone .t1{font-size:13px;color:var(--text);}
+  .dropzone .t2{font-size:11px;color:var(--text-dim);margin-top:3px;}
+  input[type=file]{display:none;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--panel-raised);border:1px solid var(--hairline);color:var(--text);
+    font-family:var(--body);font-size:13px;padding:9px 14px;border-radius:8px;cursor:pointer;
+    width:100%;transition:all .15s ease;
+  }
+  .btn:hover{border-color:var(--amber);color:var(--amber);}
+  .btn.primary{background:var(--amber);border-color:var(--amber);color:#1A1206;font-weight:600;}
+  .btn.primary:hover{background:#EEB86C;color:#1A1206;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn.small{width:auto;padding:6px 10px;font-size:12px;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:6px;letter-spacing:0.3px;text-transform:uppercase;}
+  input[type=range]{width:100%;accent-color:var(--amber);}
+  .sensitivity-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);font-family:var(--mono);margin-top:2px;}
+
+  .meta-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--hairline-soft);}
+  .meta-row:last-child{border-bottom:none;}
+  .meta-row .k{color:var(--text-dim);}
+  .meta-row .v{color:var(--text);font-family:var(--mono);}
+  .chip-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+  .chip{font-family:var(--mono);font-size:10.5px;background:var(--panel-raised);border:1px solid var(--hairline);
+    padding:3px 7px;border-radius:5px;color:var(--text-muted);}
+
+  /* empty state */
+  .empty{
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+    padding:60px 10px;color:var(--text-dim);max-width:520px;
+  }
+  .empty h1{font-family:var(--display);font-style:italic;font-size:30px;color:var(--text);margin:0 0 10px;font-weight:400;}
+  .empty p{font-size:14px;line-height:1.6;color:var(--text-muted);}
+
+  /* issue list */
+  .list-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;}
+  .list-header h2{font-family:var(--display);font-style:italic;font-weight:400;font-size:24px;margin:0;}
+  .list-header .count{font-family:var(--mono);font-size:12px;color:var(--text-dim);}
+
+  .issue{
+    border:1px solid var(--hairline);border-radius:12px;margin-bottom:12px;overflow:hidden;
+    background:var(--panel);transition:border-color .15s ease;
+  }
+  .issue:hover{border-color:var(--hairline-soft);}
+  .issue-head{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;}
+  .sev-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+  .sev-dot.critical{background:var(--red);box-shadow:0 0 8px rgba(226,96,79,.6);}
+  .sev-dot.notable{background:var(--amber);box-shadow:0 0 8px rgba(227,168,87,.5);}
+  .issue-head .titles{flex:1;min-width:0;}
+  .issue-head .kpi-name{font-size:14.5px;color:var(--text);font-weight:600;}
+  .issue-head .period{font-size:11.5px;color:var(--text-dim);font-family:var(--mono);margin-top:2px;}
+  .delta{font-family:var(--mono);font-size:15px;font-weight:600;min-width:70px;text-align:right;}
+  .delta.down{color:var(--red);}
+  .delta.up{color:var(--green);}
+  .conf-badge{
+    font-family:var(--mono);font-size:10.5px;padding:4px 9px;border-radius:20px;border:1px solid;
+    white-space:nowrap;
+  }
+  .conf-badge.high{color:var(--green);border-color:#2C5B3E;background:#12241A;}
+  .conf-badge.medium{color:var(--amber);border-color:var(--amber-dim);background:#241B0E;}
+  .conf-badge.low{color:var(--text-muted);border-color:var(--hairline);background:var(--panel-raised);}
+  .caret{color:var(--text-dim);transition:transform .2s ease;}
+  .issue.open .caret{transform:rotate(90deg);}
+
+  .issue-body{border-top:1px solid var(--hairline-soft);padding:18px 20px 20px;display:none;background:#0F1421;}
+  .issue.open .issue-body{display:block;}
+
+  .spark-row{display:flex;gap:18px;align-items:flex-end;margin-bottom:18px;}
+  .spark-box{flex:1;}
+  .spark-box .lbl{font-size:10.5px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;}
+
+  .narrative{margin-bottom:16px;}
+  .n-block{margin-bottom:14px;}
+  .n-block .n-label{
+    font-family:var(--mono);font-size:10.5px;color:var(--amber);letter-spacing:1px;margin-bottom:5px;
+  }
+  .n-block p{font-size:14px;line-height:1.65;color:var(--text);margin:0;}
+  .cite{
+    font-family:var(--mono);font-size:10px;color:var(--cyan);border-bottom:1px dotted var(--cyan);
+    cursor:help;padding:0 2px;
+  }
+  .cite:hover{background:#0F2A2E;}
+
+  .evidence-panel{
+    background:var(--panel-raised);border:1px solid var(--hairline);border-radius:8px;
+    padding:12px 14px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-muted);
+    display:none;
+  }
+  .evidence-panel.show{display:block;}
+  .evidence-panel .row{display:flex;justify-content:space-between;padding:3px 0;}
+
+  .attribution{margin-top:16px;}
+  .attr-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+  .attr-bar-row .seg-label{width:150px;flex:0 0 150px;font-size:11.5px;color:var(--text-muted);text-align:right;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .attr-bar-track{flex:1;height:14px;background:#0A0E1A;border-radius:4px;position:relative;overflow:hidden;}
+  .attr-bar-fill{height:100%;border-radius:4px;}
+  .attr-bar-fill.pos{background:linear-gradient(90deg,#3A6B4A,var(--green));}
+  .attr-bar-fill.neg{background:linear-gradient(90deg,#8A3B32,var(--red));}
+  .attr-pct{width:52px;flex:0 0 52px;font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+
+  .feedback-row{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;align-items:center;}
+  .feedback-row .btn{width:auto;flex:0 0 auto;padding:8px 14px;font-size:12.5px;}
+  .feedback-row select{
+    background:var(--panel-raised);color:var(--text);border:1px solid var(--hairline);
+    border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:var(--body);
+  }
+  .feedback-status{font-size:12px;color:var(--green);font-family:var(--mono);margin-left:auto;}
+
+  /* evidence log */
+  .log-entry{
+    display:flex;gap:14px;padding:12px 14px;border:1px solid var(--hairline);border-radius:10px;
+    margin-bottom:10px;background:var(--panel);align-items:center;
+  }
+  .log-entry .tag{
+    font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px;flex:0 0 auto;
+  }
+  .log-entry .tag.confirm{background:#12241A;color:var(--green);}
+  .log-entry .tag.reject{background:#2A1414;color:var(--red);}
+  .log-entry .tag.correct{background:#241B0E;color:var(--amber);}
+  .log-entry .desc{font-size:13px;color:var(--text-muted);flex:1;}
+  .log-entry .desc b{color:var(--text);font-weight:600;}
+  .log-entry .n{font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+
+  footer.foot{padding:20px 32px;color:var(--text-dim);font-size:11px;font-family:var(--mono);border-top:1px solid var(--hairline-soft);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark"><b>LU</b>CID</span>
+      <span class="tag">causal insight engine · v0 prototype</span>
+    </div>
+    <nav class="tabs">
+      <button id="tab-scan" class="active">Scan</button>
+      <button id="tab-log">Evidence Log <span id="log-count-badge"></span></button>
+    </nav>
+  </header>
+
+  <main>
+    <aside class="sidebar">
+
+      <div class="card">
+        <h3>Pipeline</h3>
+        <div class="pipeline" id="pipeline">
+          <div class="stage" data-stage="fuse">FUSE</div>
+          <div class="stage" data-stage="detect">DETECT</div>
+          <div class="stage" data-stage="attribute">ATTRIB</div>
+          <div class="stage" data-stage="narrate">NARRATE</div>
+          <div class="stage" data-stage="act">ACT</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>1 · Load Dataset</h3>
+        <div class="dropzone" id="dropzone">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8B93A8" stroke-width="1.4"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>
+          <div class="t1">Drop a CSV, or click to browse</div>
+          <div class="t2">any table with a time/period column works</div>
+        </div>
+        <input type="file" id="fileInput" accept=".csv,text/csv">
+        <div style="height:10px"></div>
+        <button class="btn" id="sampleBtn">Use sample dataset</button>
+      </div>
+
+      <div class="card" id="schemaCard" style="display:none">
+        <h3>2 · Detected Schema</h3>
+        <div class="meta-row"><span class="k">rows</span><span class="v" id="schemaRows">–</span></div>
+        <div class="meta-row"><span class="k">time column</span><span class="v" id="schemaTime">–</span></div>
+        <div style="margin-top:8px">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">KPI candidates</div>
+          <div class="chip-list" id="schemaKpis"></div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">Dimensions</div>
+          <div class="chip-list" id="schemaDims"></div>
+        </div>
+      </div>
+
+      <div class="card" id="configCard" style="display:none">
+        <h3>3 · Sensitivity</h3>
+        <div class="field">
+          <input type="range" id="sensSlider" min="1" max="3" value="2" step="1">
+          <div class="sensitivity-labels"><span>Loose</span><span>Standard</span><span>Strict</span></div>
+        </div>
+        <button class="btn primary" id="runBtn">Run scan</button>
+      </div>
+
+    </aside>
+
+    <section class="content">
+
+      <div id="scanView">
+        <div class="empty" id="emptyState">
+          <h1>Turn a KPI wobble into a decision.</h1>
+          <p>Load a dataset on the left — any table with a date/period column, some numeric metrics,
+          and a few categorical dimensions (region, product, channel, segment…). LUCID scans every
+          KPI for statistically real deviations, attributes them to the segment most likely responsible,
+          and writes a cited What / Why / So&nbsp;What / Now&nbsp;What story for each — flagging when the
+          evidence is too thin to name a single cause.</p>
+        </div>
+        <div id="issuesWrap" style="display:none">
+          <div class="list-header">
+            <h2>Detected issues</h2>
+            <span class="count" id="issueCount"></span>
+          </div>
+          <div id="issuesList"></div>
+        </div>
+      </div>
+
+      <div id="logView" style="display:none">
+        <div class="list-header"><h2>Evidence &amp; feedback log</h2><span class="count" id="logCount2"></span></div>
+        <div id="logList"></div>
+        <div class="empty" id="logEmpty" style="display:none;padding:40px 0;">
+          <p style="color:var(--text-dim)">No decisions recorded yet. Confirm, reject, or correct an insight
+          from the Scan tab — each response recalibrates how LUCID weighs that dimension next time.</p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="foot">LUCID prototype · FUSE → DETECT → ATTRIBUTE → NARRATE → ACT · runs entirely client-side, no data leaves the browser</footer>
+</div>
+
+<script>
+(function(){
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  headers: [],
+  rows: [],
+  timeCol: null,
+  timeType: null, // 'date' | 'ordinal'
+  kpiCols: [],
+  dimCols: [],
+  periods: [],     // [{label, sort}]
+  anomalies: [],
+  dimWeights: {},  // dimension -> multiplier, adjusted by feedback
+  feedbackLog: [],
+  sensitivity: 2
+};
+
+/* ============================================================
+   CSV PARSING (small, dependency-free, handles quoted fields)
+   ============================================================ */
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  text = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field+='"'; i++; } else { inQuotes=false; }
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  const clean = rows.filter(r => r.length>1 || (r.length===1 && r[0].trim()!==''));
+  if(!clean.length) return {headers:[], rows:[]};
+  const headers = clean[0].map(h=>h.trim());
+  const dataRows = clean.slice(1).map(r=>{
+    const o = {};
+    headers.forEach((h,idx)=> o[h] = (r[idx]!==undefined? r[idx].trim() : ''));
+    return o;
+  });
+  return {headers, rows: dataRows};
+}
+
+function toNumber(str){
+  if(str === null || str === undefined) return NaN;
+  const s = String(str).replace(/[,%$₹\s]/g,'');
+  if(s === '') return NaN;
+  const n = parseFloat(s);
+  return isNaN(n) ? NaN : n;
+}
+
+// Strict date matching -- deliberately NOT using bare Date.parse(), which is
+// too lenient (e.g. Date.parse("Week 1") silently returns a "valid" but
+// meaningless timestamp) and will scramble period ordering.
+const DATE_PATTERNS = [
+  /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/,        // 2026-01-31
+  /^\d{4}\/\d{2}\/\d{2}$/,                                  // 2026/01/31
+  /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,                            // 01/31/2026 or 1/31/26
+  /^\d{1,2}-\d{1,2}-\d{2,4}$/,                              // 31-01-2026
+  /^\d{4}-\d{2}$/,                                          // 2026-01
+  /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}$/i, // Jan 31, 2026
+  /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}$/i,             // January 2026
+  /^\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}$/i,   // 31 Jan 2026
+];
+function looksLikeDate(str){
+  const s = String(str).trim();
+  if(!s) return false;
+  return DATE_PATTERNS.some(re => re.test(s));
+}
+// Extracts a trailing/embedded number for ordinal period labels like
+// "Week 12", "Sprint 3", "Period-7", "Q3".
+function extractOrdinalNumber(str){
+  const m = String(str).match(/-?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : NaN;
+}
+
+/* ============================================================
+   SCHEMA DETECTION
+   ============================================================ */
+function detectSchema(){
+  const headers = S.headers, rows = S.rows;
+  const n = rows.length;
+  const stats = {};
+  headers.forEach(h=>{
+    let dateHits=0, numHits=0, ordinalHits=0, nonEmpty=0, intLikeCount=0;
+    const uniq = new Set();
+    rows.forEach(r=>{
+      const v = r[h];
+      if(v === '' || v===undefined) return;
+      nonEmpty++;
+      uniq.add(v);
+      if(looksLikeDate(v)) dateHits++;
+      const num = toNumber(v);
+      if(!isNaN(num)){
+        numHits++;
+        if(Number.isInteger(num) && !/\./.test(String(v).trim())) intLikeCount++;
+      }
+      if(!isNaN(extractOrdinalNumber(v))) ordinalHits++;
+    });
+    stats[h] = {
+      dateRate: nonEmpty? dateHits/nonEmpty : 0,
+      numRate: nonEmpty? numHits/nonEmpty : 0,
+      ordinalRate: nonEmpty? ordinalHits/nonEmpty : 0,
+      intRate: nonEmpty? intLikeCount/nonEmpty : 0,
+      uniqCount: uniq.size,
+      nonEmpty
+    };
+  });
+
+  // time column: strict date match first, else a name-hinted ordinal column
+  let timeCol = null, timeType = null;
+  const nameHint = /date|time|period|week|month|quarter|year|day|sprint/i;
+  let best = null;
+  headers.forEach(h=>{
+    const st = stats[h];
+    const scoreDate = st.dateRate + (nameHint.test(h)?0.15:0);
+    if(st.dateRate >= 0.6){
+      if(!best || scoreDate > best.score){ best = {h, score: scoreDate, type:'date'}; }
+    }
+  });
+  if(best){ timeCol = best.h; timeType='date'; }
+  else {
+    let bestOrd = null;
+    headers.forEach(h=>{
+      const st = stats[h];
+      if(nameHint.test(h) && st.ordinalRate >= 0.8){
+        const score = st.ordinalRate + (st.numRate>=0.8 && !nameHint.test(h) ? -0.5:0);
+        if(!bestOrd || score > bestOrd.score) bestOrd = {h, score};
+      }
+    });
+    if(bestOrd){ timeCol = bestOrd.h; timeType = 'ordinal'; }
+  }
+
+  // numeric KPI candidates: high numeric rate, not the time col, not an obvious id, has variance.
+  // Near-unique columns are only excluded when they look like integer identifiers
+  // (sequential whole numbers) -- continuous decimal metrics (revenue, margin %, etc.)
+  // are legitimate KPIs even when almost every value is unique.
+  const idHint = /(^|_)(id|code|zip|postal|sku|uuid)($|_)/i;
+  const kpiCols = [];
+  headers.forEach(h=>{
+    if(h === timeCol) return;
+    const st = stats[h];
+    if(st.numRate >= 0.85 && !idHint.test(h) && st.uniqCount > 1){
+      const looksLikeIdSequence = st.uniqCount >= n*0.98 && n>20 && st.intRate >= 0.95;
+      if(looksLikeIdSequence) return;
+      kpiCols.push(h);
+    }
+  });
+
+  // categorical dimension candidates
+  const dimCols = [];
+  headers.forEach(h=>{
+    if(h === timeCol || kpiCols.includes(h)) return;
+    const st = stats[h];
+    if(st.uniqCount >= 2 && st.uniqCount <= Math.max(30, Math.min(60, n*0.5))){
+      dimCols.push(h);
+    }
+  });
+
+  S.timeCol = timeCol;
+  S.timeType = timeType;
+  S.kpiCols = kpiCols;
+  S.dimCols = dimCols;
+
+  // assign period sort/label to each row
+  if(timeCol){
+    rows.forEach(r=>{
+      const raw = r[timeCol];
+      let sortVal, label;
+      if(timeType==='date'){
+        const t = Date.parse(raw);
+        sortVal = isNaN(t) ? 0 : t;
+        label = raw;
+      } else {
+        sortVal = extractOrdinalNumber(raw);
+        if(isNaN(sortVal)) sortVal = 0;
+        label = raw;
+      }
+      r.__periodSort = sortVal;
+      r.__periodLabel = label;
+    });
+    const map = new Map();
+    rows.forEach(r=>{ if(!map.has(r.__periodLabel)) map.set(r.__periodLabel, r.__periodSort); });
+    S.periods = Array.from(map.entries()).map(([label,sort])=>({label,sort})).sort((a,b)=>a.sort-b.sort);
+  } else {
+    S.periods = [];
+  }
+
+  // default dim weights
+  dimCols.forEach(d=>{ if(!(d in S.dimWeights)) S.dimWeights[d] = 1.0; });
+
+  return {timeCol, timeType, kpiCols, dimCols, n};
+}
+
+/* ============================================================
+   ANOMALY DETECTION (time-series path)
+   ============================================================ */
+function sumKpiForPeriod(kpi, periodLabel, filterFn){
+  let s = 0, any=false;
+  S.rows.forEach(r=>{
+    if(r.__periodLabel !== periodLabel) return;
+    if(filterFn && !filterFn(r)) return;
+    const v = toNumber(r[kpi]);
+    if(!isNaN(v)){ s += v; any=true; }
+  });
+  return any ? s : null;
+}
+
+function sensitivityThreshold(){
+  return {1:2.2, 2:1.8, 3:1.4}[S.sensitivity] || 1.8;
+}
+
+function runDetection(){
+  S.anomalies = [];
+  if(!S.timeCol || S.periods.length < 3) return { fallback:true };
+
+  const zThresh = sensitivityThreshold();
+
+  S.kpiCols.forEach(kpi=>{
+    const series = S.periods.map(p=> sumKpiForPeriod(kpi, p.label));
+    if(series.some(v=>v===null)) return;
+    const pctChanges = [];
+    for(let i=1;i<series.length;i++){
+      const prev = series[i-1], cur = series[i];
+      const pct = prev !== 0 ? (cur-prev)/Math.abs(prev) : 0;
+      pctChanges.push(pct);
+    }
+    if(pctChanges.length < 2) return;
+    const mean = pctChanges.reduce((a,b)=>a+b,0)/pctChanges.length;
+    const variance = pctChanges.reduce((a,b)=>a+(b-mean)*(b-mean),0)/pctChanges.length;
+    const std = Math.sqrt(variance) || 1e-9;
+
+    pctChanges.forEach((pct,i)=>{
+      const z = (pct-mean)/std;
+      if(Math.abs(z) >= zThresh){
+        const periodIdx = i+1;
+        S.anomalies.push({
+          id: kpi+'::'+S.periods[periodIdx].label,
+          kpi,
+          period: S.periods[periodIdx].label,
+          prevPeriod: S.periods[periodIdx-1].label,
+          now: series[periodIdx],
+          prev: series[periodIdx-1],
+          pct,
+          z,
+          severity: Math.abs(z) >= 2.5 ? 'critical' : 'notable'
+        });
+      }
+    });
+  });
+
+  // rank by |z| desc, cap
+  S.anomalies.sort((a,b)=> Math.abs(b.z) - Math.abs(a.z));
+  S.anomalies = S.anomalies.slice(0, 10);
+
+  // attach attribution + confidence + narrative
+  S.anomalies.forEach(a=>{
+    a.attribution = computeAttribution(a.kpi, a.period, a.prevPeriod);
+    a.confidence = computeConfidence(a);
+    a.narrative = buildNarrative(a);
+  });
+
+  S.anomalies.sort((a,b)=> b.confidence - a.confidence);
+
+  return { fallback:false };
+}
+
+function computeAttribution(kpi, period, prevPeriod){
+  const results = [];
+  S.dimCols.forEach(dim=>{
+    const nowMap = new Map(), prevMap = new Map();
+    S.rows.forEach(r=>{
+      const v = toNumber(r[kpi]);
+      if(isNaN(v)) return;
+      const seg = r[dim] || '(blank)';
+      if(r.__periodLabel === period) nowMap.set(seg, (nowMap.get(seg)||0)+v);
+      if(r.__periodLabel === prevPeriod) prevMap.set(seg, (prevMap.get(seg)||0)+v);
+    });
+    const segs = new Set([...nowMap.keys(), ...prevMap.keys()]);
+    const totalDelta = [...segs].reduce((acc,seg)=> acc + ((nowMap.get(seg)||0)-(prevMap.get(seg)||0)), 0);
+    segs.forEach(seg=>{
+      const now = nowMap.get(seg)||0, prev = prevMap.get(seg)||0;
+      const delta = now-prev;
+      const contribution = totalDelta !== 0 ? delta/totalDelta : 0;
+      results.push({dim, seg, now, prev, delta, contribution: contribution * (S.dimWeights[dim]||1)});
+    });
+  });
+  results.sort((a,b)=> Math.abs(b.contribution) - Math.abs(a.contribution));
+  return results.slice(0,6);
+}
+
+function computeConfidence(a){
+  const zNorm = Math.min(Math.abs(a.z)/3, 1);
+  const top = a.attribution[0];
+  const conc = top ? Math.min(Math.abs(top.contribution),1) : 0;
+  const conf = 0.45*zNorm + 0.55*conc;
+  return Math.max(0, Math.min(1, conf));
+}
+
+/* ============================================================
+   NARRATIVE GENERATION (grounded in the computed evidence)
+   ============================================================ */
+function fmtNum(n){
+  if(n===null||n===undefined||isNaN(n)) return '–';
+  const abs = Math.abs(n);
+  if(abs >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if(abs >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Number.isInteger(n) ? n.toString() : n.toFixed(2);
+}
+function fmtPct(p){ return (p*100).toFixed(1)+'%'; }
+
+function buildNarrative(a){
+  const dir = a.pct < 0 ? 'dropped' : 'rose';
+  const dirWord = a.pct < 0 ? 'decline' : 'increase';
+  const top = a.attribution[0];
+  const second = a.attribution[1];
+  const topPct = top ? Math.abs(top.contribution) : 0;
+  const ambiguous = !top || topPct < 0.35;
+
+  const what = `${a.kpi} ${dir} from ${fmtNum(a.prev)} to ${fmtNum(a.now)} between `+
+    `${a.prevPeriod} and ${a.period} — a ${fmtPct(Math.abs(a.pct))} ${dirWord} `+
+    `<span class="cite" data-ev="z">[z = ${a.z.toFixed(2)}]</span>, `+
+    `well outside normal period-to-period volatility for this metric — classified <b>${a.severity.toUpperCase()}</b>.`;
+
+  let why;
+  if(ambiguous){
+    const cands = a.attribution.slice(0,3).filter(x=>x);
+    const list = cands.map(c=> `<b>${c.seg}</b> (${c.dim}, ${fmtPct(c.contribution)})`).join(', ');
+    why = `No single segment dominates the shift <span class="cite" data-ev="attr">[attribution table]</span> — `+
+      `evidence is genuinely ambiguous. Competing candidates, ranked by explanatory share: ${list}. `+
+      `LUCID is not forcing a single story here; each candidate should be checked before acting.`;
+  } else {
+    why = `<b>${top.seg}</b> within <b>${top.dim}</b> accounts for `+
+      `${fmtPct(Math.abs(top.contribution))} of the total change `+
+      `<span class="cite" data-ev="attr">[${fmtNum(top.prev)} → ${fmtNum(top.now)}]</span>`+
+      (second ? `, with <b>${second.seg}</b> a distant second at ${fmtPct(Math.abs(second.contribution))}.` : '.');
+  }
+
+  const soWhat = a.pct < 0
+    ? `If this concentration holds, ${top ? top.seg : 'this segment'} alone is pulling total ${a.kpi} down and, left unaddressed, will keep compounding into the next period rather than reverting on its own.`
+    : `The gain is concentrated rather than broad-based, so it's a lead worth understanding and replicating — not yet evidence of a systemic improvement.`;
+
+  const nowWhat = ambiguous
+    ? `Route to the KPI owner for manual triage across the top candidates above before committing to a fix; confirm or correct below once the real driver is known.`
+    : `Route to the owner of <b>${top.seg}</b> for confirmation. If confirmed, LUCID reinforces this dimension for future anomalies on ${a.kpi}; if rejected, weighting shifts to the next-ranked candidate.`;
+
+  return {what, why, soWhat, nowWhat, ambiguous};
+}
+
+/* ============================================================
+   SVG micro-charts (no dependencies)
+   ============================================================ */
+function sparkSVG(series, w, h){
+  if(!series.length) return '';
+  const min = Math.min(...series), max = Math.max(...series);
+  const range = (max-min) || 1;
+  const step = w/(series.length-1 || 1);
+  const pts = series.map((v,i)=> `${(i*step).toFixed(1)},${(h - ((v-min)/range)*h*0.85 - h*0.075).toFixed(1)}`).join(' ');
+  const lastX = (series.length-1)*step, lastY = h - ((series[series.length-1]-min)/range)*h*0.85 - h*0.075;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <polyline points="${pts}" fill="none" stroke="#57C7D6" stroke-width="1.6"/>
+    <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3" fill="#E3A857"/>
+  </svg>`;
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function renderSchemaCard(){
+  document.getElementById('schemaCard').style.display = 'block';
+  document.getElementById('configCard').style.display = 'block';
+  document.getElementById('schemaRows').textContent = S.rows.length;
+  document.getElementById('schemaTime').textContent = S.timeCol ? `${S.timeCol} (${S.timeType})` : 'none detected';
+  document.getElementById('schemaKpis').innerHTML = S.kpiCols.map(k=>`<span class="chip">${k}</span>`).join('') || '<span class="chip">none found</span>';
+  document.getElementById('schemaDims').innerHTML = S.dimCols.map(d=>`<span class="chip">${d}</span>`).join('') || '<span class="chip">none found</span>';
+}
+
+function setPipelineStage(stage){
+  document.querySelectorAll('.pipeline .stage').forEach(el=>{
+    el.classList.remove('active');
+    if(el.dataset.stage === stage) el.classList.add('active');
+  });
+}
+function markPipelineDone(stages){
+  document.querySelectorAll('.pipeline .stage').forEach(el=>{
+    if(stages.includes(el.dataset.stage)){ el.classList.remove('active'); el.classList.add('done'); }
+  });
+}
+function resetPipeline(){
+  document.querySelectorAll('.pipeline .stage').forEach(el=> el.classList.remove('active','done'));
+}
+
+function renderIssues(){
+  const wrap = document.getElementById('issuesWrap');
+  const empty = document.getElementById('emptyState');
+  const list = document.getElementById('issuesList');
+
+  if(!S.anomalies.length){
+    wrap.style.display = 'none';
+    empty.style.display = 'flex';
+    empty.querySelector('h1').textContent = 'No statistically significant anomalies found.';
+    empty.querySelector('p').textContent = 'Every KPI stayed within normal period-to-period volatility at this sensitivity. Try "Loose" sensitivity, or load a dataset with more history.';
+    return;
+  }
+  empty.style.display = 'none';
+  wrap.style.display = 'block';
+  document.getElementById('issueCount').textContent = S.anomalies.length + ' found';
+
+  list.innerHTML = S.anomalies.map(a=>{
+    const confClass = a.confidence>=0.7?'high':(a.confidence>=0.4?'medium':'low');
+    const deltaClass = a.pct<0?'down':'up';
+    const arrow = a.pct<0?'▼':'▲';
+    return `
+    <div class="issue" id="issue-${cssId(a.id)}">
+      <div class="issue-head" onclick="LUCID.toggle('${a.id}')">
+        <div class="sev-dot ${a.severity}"></div>
+        <div class="titles">
+          <div class="kpi-name">${a.kpi}</div>
+          <div class="period">${a.prevPeriod} → ${a.period}</div>
+        </div>
+        <div class="delta ${deltaClass}">${arrow} ${fmtPct(Math.abs(a.pct))}</div>
+        <div class="conf-badge ${confClass}">conf ${(a.confidence*100).toFixed(0)}%</div>
+        <div class="caret">▸</div>
+      </div>
+      <div class="issue-body">${renderIssueBody(a)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderIssueBody(a){
+  const series = S.periods.map(p=> sumKpiForPeriod(a.kpi, p.label)).filter(v=>v!==null);
+  const spark = sparkSVG(series, 260, 60);
+
+  const attrBars = a.attribution.map(x=>{
+    const pct = Math.max(-1,Math.min(1,x.contribution));
+    const w = Math.abs(pct)*100;
+    return `<div class="attr-bar-row">
+      <div class="seg-label" title="${x.dim}: ${x.seg}">${x.seg}</div>
+      <div class="attr-bar-track"><div class="attr-bar-fill ${pct<0?'neg':'pos'}" style="width:${w}%"></div></div>
+      <div class="attr-pct">${fmtPct(x.contribution)}</div>
+    </div>`;
+  }).join('');
+
+  const evId = 'ev-'+cssId(a.id);
+
+  return `
+    <div class="spark-row">
+      <div class="spark-box">
+        <div class="lbl">trend · ${a.kpi} across all periods</div>
+        ${spark}
+      </div>
+    </div>
+
+    <div class="narrative">
+      <div class="n-block"><div class="n-label">WHAT</div><p>${a.narrative.what}</p></div>
+      <div class="n-block"><div class="n-label">WHY</div><p>${a.narrative.why}</p></div>
+      <div class="n-block"><div class="n-label">SO WHAT</div><p>${a.narrative.soWhat}</p></div>
+      <div class="n-block"><div class="n-label">NOW WHAT</div><p>${a.narrative.nowWhat}</p></div>
+    </div>
+
+    <div class="evidence-panel" id="${evId}">
+      <div class="row"><span>previous period (${a.prevPeriod})</span><span>${fmtNum(a.prev)}</span></div>
+      <div class="row"><span>current period (${a.period})</span><span>${fmtNum(a.now)}</span></div>
+      <div class="row"><span>z-score of % change</span><span>${a.z.toFixed(2)}</span></div>
+      <div class="row"><span>top segment contribution</span><span>${a.attribution[0]? fmtPct(a.attribution[0].contribution):'–'}</span></div>
+    </div>
+    <div style="margin-top:6px;margin-bottom:14px;">
+      <span class="chip" style="cursor:pointer" onclick="document.getElementById('${evId}').classList.toggle('show')">toggle raw evidence</span>
+    </div>
+
+    <div class="attribution">
+      <div class="lbl" style="font-family:var(--mono);font-size:10.5px;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">segment attribution (top candidates)</div>
+      ${attrBars || '<div style="color:var(--text-dim);font-size:12px;">no categorical dimensions available for attribution</div>'}
+    </div>
+
+    <div class="feedback-row" id="fb-${cssId(a.id)}">
+      <button class="btn small" onclick="LUCID.feedback('${a.id}','confirm')">✓ Confirm driver</button>
+      <button class="btn small" onclick="LUCID.feedback('${a.id}','reject')">✕ Not the driver</button>
+      <select id="corr-${cssId(a.id)}">
+        ${a.attribution.map(x=>`<option value="${x.dim}|||${x.seg}">${x.seg} (${x.dim})</option>`).join('')}
+      </select>
+      <button class="btn small" onclick="LUCID.feedback('${a.id}','correct')">Correct →</button>
+      <span class="feedback-status" id="fbstatus-${cssId(a.id)}"></span>
+    </div>
+  `;
+}
+
+function cssId(id){ return id.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function renderLog(){
+  const list = document.getElementById('logList');
+  const empty = document.getElementById('logEmpty');
+  const countEl = document.getElementById('logCount2');
+  const badge = document.getElementById('log-count-badge');
+  badge.textContent = S.feedbackLog.length ? `(${S.feedbackLog.length})` : '';
+  countEl.textContent = S.feedbackLog.length + ' entries';
+  if(!S.feedbackLog.length){ list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  list.innerHTML = S.feedbackLog.slice().reverse().map((e,i)=>{
+    const tagClass = e.action==='confirm'?'confirm':(e.action==='reject'?'reject':'correct');
+    const tagText = e.action==='confirm'?'CONFIRMED':(e.action==='reject'?'REJECTED':'CORRECTED');
+    return `<div class="log-entry">
+      <span class="tag ${tagClass}">${tagText}</span>
+      <span class="desc">${e.desc}</span>
+      <span class="n">#${S.feedbackLog.length - i}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   FEEDBACK LOOP
+   ============================================================ */
+function feedback(id, action){
+  const a = S.anomalies.find(x=>x.id===id);
+  if(!a) return;
+  const statusEl = document.getElementById('fbstatus-'+cssId(id));
+  let desc;
+  if(action==='confirm'){
+    const top = a.attribution[0];
+    if(top){ S.dimWeights[top.dim] = Math.min(2.5, (S.dimWeights[top.dim]||1) * 1.15); }
+    desc = `<b>${a.kpi}</b> (${a.prevPeriod}→${a.period}): confirmed <b>${top?top.seg:'top candidate'}</b> as the driver — weight for <b>${top?top.dim:''}</b> increased.`;
+    if(statusEl) statusEl.textContent = 'confirmed — dimension reinforced';
+  } else if(action==='reject'){
+    const top = a.attribution[0];
+    if(top){ S.dimWeights[top.dim] = Math.max(0.3, (S.dimWeights[top.dim]||1) * 0.7); }
+    desc = `<b>${a.kpi}</b> (${a.prevPeriod}→${a.period}): rejected <b>${top?top.seg:'top candidate'}</b> as the driver — weight for <b>${top?top.dim:''}</b> reduced, next-ranked candidate will surface first going forward.`;
+    if(statusEl) statusEl.textContent = 'rejected — recalibrating';
+  } else if(action==='correct'){
+    const sel = document.getElementById('corr-'+cssId(id));
+    const [dim, seg] = sel.value.split('|||');
+    S.dimWeights[dim] = Math.min(2.5, (S.dimWeights[dim]||1) * 1.3);
+    desc = `<b>${a.kpi}</b> (${a.prevPeriod}→${a.period}): corrected — real driver marked as <b>${seg}</b> within <b>${dim}</b>; weight boosted for next scan.`;
+    if(statusEl) statusEl.textContent = 'correction logged — model recalibrated';
+  }
+  S.feedbackLog.push({action, desc, ts: Date.now()});
+  renderLog();
+}
+
+function toggle(id){
+  const el = document.getElementById('issue-'+cssId(id));
+  if(el) el.classList.toggle('open');
+}
+
+/* ============================================================
+   SAMPLE DATASET (generic-ish retail/ops example, injected anomaly)
+   ============================================================ */
+function generateSampleCSV(){
+  const regions = ['Northeast','Midwest','South','West'];
+  const products = ['Core Plan','Pro Plan','Add-on Pack'];
+  const channels = ['Direct','Partner','Online'];
+  const rows = [];
+  let seed = 42;
+  function rand(){ seed = (seed*1103515245+12345) & 0x7fffffff; return (seed/0x7fffffff); }
+  for(let w=1; w<=16; w++){
+    regions.forEach(region=>{
+      products.forEach(product=>{
+        channels.forEach(channel=>{
+          let base = 4000 + (region==='West'?1500:0) + (product==='Pro Plan'?800:0) + (channel==='Online'?500:0);
+          let noise = (rand()-0.5)*400;
+          let revenue = base + noise + w*20;
+          let units = Math.round((revenue/80) + (rand()-0.5)*5);
+          // injected anomaly: Northeast, Direct channel, weeks 10-11 collapse (simulated carrier/ops disruption)
+          if(region==='Northeast' && channel==='Direct' && (w===10 || w===11)){
+            revenue = revenue * 0.35;
+            units = Math.round(units*0.4);
+          }
+          // injected mild growth anomaly: West / Online ramps weeks 14-16
+          if(region==='West' && channel==='Online' && w>=14){
+            revenue = revenue * 1.6;
+            units = Math.round(units*1.5);
+          }
+          rows.push([`Week ${w}`, region, product, channel, revenue.toFixed(2), units]);
+        });
+      });
+    });
+  }
+  const header = ['week','region','product','channel','revenue','units'];
+  return [header.join(','), ...rows.map(r=>r.join(','))].join('\n');
+}
+
+/* ============================================================
+   LOAD / RUN FLOW
+   ============================================================ */
+function loadCSVText(text){
+  const {headers, rows} = parseCSV(text);
+  if(!headers.length || !rows.length){
+    alert('Could not parse a dataset from that file.');
+    return;
+  }
+  S.headers = headers;
+  S.rows = rows;
+  S.dimWeights = {};
+  setPipelineStage('fuse');
+  setTimeout(()=>{
+    detectSchema();
+    markPipelineDone(['fuse']);
+    renderSchemaCard();
+    document.getElementById('issuesWrap').style.display='none';
+    document.getElementById('emptyState').style.display='flex';
+    document.getElementById('emptyState').querySelector('h1').textContent = 'Dataset loaded — ready to scan.';
+    document.getElementById('emptyState').querySelector('p').textContent = `Detected ${S.kpiCols.length} candidate KPI column(s) and ${S.dimCols.length} dimension(s) across ${S.rows.length} rows. Adjust sensitivity if needed, then run the scan.`;
+  }, 250);
+}
+
+function runScan(){
+  S.sensitivity = parseInt(document.getElementById('sensSlider').value, 10);
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = true; runBtn.textContent = 'Scanning…';
+
+  setPipelineStage('detect');
+  setTimeout(()=>{
+    const res = runDetection();
+    markPipelineDone(['fuse','detect']);
+    setPipelineStage('attribute');
+    setTimeout(()=>{
+      markPipelineDone(['fuse','detect','attribute']);
+      setPipelineStage('narrate');
+      setTimeout(()=>{
+        markPipelineDone(['fuse','detect','attribute','narrate']);
+        setPipelineStage('act');
+        setTimeout(()=>{
+          markPipelineDone(['fuse','detect','attribute','narrate','act']);
+          renderIssues();
+          runBtn.disabled = false; runBtn.textContent = 'Run scan';
+        }, 300);
+      }, 350);
+    }, 350);
+  }, 300);
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+document.getElementById('dropzone').addEventListener('click', ()=> document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> loadCSVText(reader.result);
+  reader.readAsText(f);
+});
+['dragover','dragenter'].forEach(ev=>{
+  document.getElementById('dropzone').addEventListener(ev, e=>{ e.preventDefault(); document.getElementById('dropzone').classList.add('drag'); });
+});
+['dragleave','drop'].forEach(ev=>{
+  document.getElementById('dropzone').addEventListener(ev, e=>{ document.getElementById('dropzone').classList.remove('drag'); });
+});
+document.getElementById('dropzone').addEventListener('drop', e=>{
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> loadCSVText(reader.result);
+  reader.readAsText(f);
+});
+document.getElementById('sampleBtn').addEventListener('click', ()=> loadCSVText(generateSampleCSV()));
+document.getElementById('runBtn').addEventListener('click', runScan);
+
+document.getElementById('tab-scan').addEventListener('click', ()=>{
+  document.getElementById('tab-scan').classList.add('active');
+  document.getElementById('tab-log').classList.remove('active');
+  document.getElementById('scanView').style.display='block';
+  document.getElementById('logView').style.display='none';
+});
+document.getElementById('tab-log').addEventListener('click', ()=>{
+  document.getElementById('tab-log').classList.add('active');
+  document.getElementById('tab-scan').classList.remove('active');
+  document.getElementById('logView').style.display='block';
+  document.getElementById('scanView').style.display='none';
+  renderLog();
+});
+
+window.LUCID = { toggle, feedback, loadCSVText, runScan, _debugState: S };
+
+})();
+</script>
+</body>
+</html>
