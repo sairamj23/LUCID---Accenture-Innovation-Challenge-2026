@@ -1,103 +1,88 @@
-# LUCID — Language-driven Understanding & Causal Insight Discovery
-
-**Team Reinventors** · Accenture Innovation Challenge '26 · PS-3, BusinessIntelligence.ai
-
-A single-file, zero-dependency prototype that turns a raw KPI dataset into cited,
-confidence-scored, plain-English explanations — automatically.
-
-**Live logic:** load any dataset → LUCID detects the KPI(s), the time axis, and the
-categorical dimensions on its own → scans every KPI for statistically real deviations →
-attributes each one to the segment most responsible → writes a grounded
-**What / Why / So What / Now What** story → routes it for a human accept / reject / correct
-decision that recalibrates the next scan.
-
+LUCID — Language-driven Understanding & Causal Insight Discovery
+Accenture Innovation Challenge 2026 — Round 2 Prototype
+Problem Statement: BusinessIntelligence.ai (PS-3)
+LUCID turns a KPI anomaly ("revenue -8% this week") into an evidence-backed explanation and a concrete recommended action — in minutes, not the hours or days a manual analyst investigation usually takes.
 ---
-
-## Why this shape
-
-The problem statement's own diagnosis is that BI tools show correlation, not causation, and
-that turning an anomaly into an explanation is a manual, days-long process. A prototype that
-only worked on the one illustrative example ("revenue dropped 8% in a region") would just be
-restating the pitch. This build is deliberately **dataset-agnostic**: point it at *any* table
-with a time/period column, some numeric metrics, and a few categorical dimensions, and it
-runs the same five-stage pipeline end to end.
-
-## Solution architecture
-
+What this is
+A working prototype demonstrating the core mechanism described in our Round 2 solution: a 5-stage pipeline (Fuse → Detect → Attribute → Narrate → Act) that ingests KPI data, statistically identifies real anomalies, attributes likely causes using deterministic rules and retrieved evidence, generates a persona-specific narrative (the only stage that calls an LLM), and produces a structured, ownable recommendation. It includes a working feedback loop, role-based entitlement enforcement, and LLM cost/latency telemetry.
+Two ways to use it:
+Upload your own data — real CSV upload, auto-detects KPIs and segments, works on data it has never seen before.
+Sample data (full demo) — a curated dataset that demonstrates the fuller required feature set (persona-specific narratives, ranked driver attribution, security/entitlement scenario, sparse-history handling) which needs a predefined KPI contract to work.
+---
+Quick start
+```bash
+git clone <this-repo-url>
+cd lucid_prototype
+python3 -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python data/generate_data.py      # generates the sample dataset
+streamlit run app.py              # launches the UI at http://localhost:8501
 ```
-FUSE          →   DETECT              →   ATTRIBUTE            →   NARRATE              →   ACT
-CSV parsed,       Per-KPI time series,     Segment decomposition     Templated LLM-style       Routed to owner,
-schema auto-          period-over-period       across every              narrative, every           accept/reject/
-detected             % change, adaptive        categorical                clause grounded in         correct feeds
-(time col,           z-score gate               dimension, ranked          a computed, cited          back into
-KPIs, dims)          separates signal            by explanatory              number — never a          per-dimension
-                     from normal noise            share                        free-floating claim       confidence weights
+No API key required — it runs on a free, offline stub LLM backend by default. See Using real Gemini narration to enable live calls.
+You can also run the full pipeline headlessly (no UI), which prints all 6 built-in demo scenarios:
+```bash
+python main.py
 ```
-
-**1. FUSE — schema inference.** The CSV is parsed and every column is scored: date-format
-match rate, numeric rate, cardinality. From that, LUCID picks the time column (strict date
-patterns, or a name-hinted ordinal like "Week 12"), the KPI candidates (numeric, non-ID,
-varying), and the dimension candidates (bounded-cardinality categoricals) — no schema is
-hard-coded.
-
-**2. DETECT — signal vs. noise.** For each KPI, LUCID builds the period-over-period series,
-computes the mean and standard deviation of historical % changes, and flags a period only when
-its z-score clears an adjustable threshold (Loose / Standard / Strict). This is the "separate a
-meaningful shift from ordinary noise" requirement — a fixed % threshold would flag any volatile
-metric constantly; an adaptive, distribution-aware gate does not.
-
-**3. ATTRIBUTE — correlation → cause, honestly.** For a flagged anomaly, LUCID decomposes the
-total change across every categorical dimension, computing each segment's share of the delta.
-If one segment explains the majority of the swing, it's named as the driver. **If no segment
-clears a concentration threshold, LUCID does not force an answer** — it surfaces the top
-competing candidates side by side and says so. That's the "stay honest when evidence is
-ambiguous" requirement, implemented rather than asserted.
-
-**4. NARRATE — grounded story generation.** Every clause in the What/Why/So-What/Now-What
-narrative is filled from the actual computed numbers (previous vs. current totals, z-score,
-segment contribution %) and each is tagged with an inline evidence citation you can expand —
-nothing is invented. The confidence badge on each card is a blend of statistical significance
-(z-score magnitude) and attribution concentration, so a leader can tell at a glance whether to
-trust the story or dig further.
-
-**5. ACT — feedback loop.** Confirm / Reject / Correct on any insight is logged to the Evidence
-Log and adjusts that dimension's weight for future scans — a lightweight, in-session stand-in
-for the "leader feedback recalibrates the model" mechanism in the full proposal.
-
-## What's simulated vs. real in this prototype
-
-- **Real:** CSV parsing, schema inference, statistical anomaly detection, segment
-  decomposition/attribution, confidence scoring, narrative templating, the feedback →
-  reweighting loop. All of this runs live, in the browser, on whatever data you load.
-- **Simulated for the demo:** the "FUSE" stage in the full LUCID vision also ingests
-  unstructured sources (support tickets, news, call transcripts) via retrieval. This prototype
-  fuses structured tabular data only; the pipeline ribbon and architecture are built so an
-  unstructured-retrieval stage slots into ATTRIBUTE without changing anything downstream.
-- The NARRATE step here is a grounded template engine, not a live LLM call — every number it
-  cites is real, but the prose isn't model-generated. Swapping in an actual LLM call (e.g. the
-  Claude API) to turn the same structured evidence bundle into prose is the natural next
-  increment, and the evidence bundle is already shaped for that hand-off.
-
-## Dependencies
-
-**None.** No build step, no npm install, no API keys, no external CDN calls — it's a single
-HTML file with inline CSS and vanilla JavaScript (CSV parser included). This was a deliberate
-choice for a judged demo: it has to run instantly, offline, on any machine.
-
-## Execution instructions
-
-1. Download `index.html` from this repo.
-2. Open it in any modern browser (Chrome, Edge, Firefox, Safari).
-3. Click **"Use sample dataset"** for an instant demo (a synthetic 16-week, multi-region,
-   multi-product dataset with two injected anomalies), or drag your own CSV onto the drop zone.
-4. Adjust sensitivity if needed, click **Run scan**, and expand any detected issue to see the
-   full narrative, evidence, attribution chart, and feedback controls.
-5. Switch to the **Evidence Log** tab to see the feedback/recalibration history.
-
-No server, no installation, no configuration required.
-
-## Team
-
-- Sibani S — Biological Engineering, IIT Madras (2027)
-- Sairam J — Biological Sciences, IIT Madras (2027)
-- Sadhana R — Biological Engineering, IIT Madras (2028)
+---
+Project structure
+```
+lucid_prototype/
+├── app.py                    # Streamlit UI — upload mode + sample-data mode
+├── main.py                   # Headless runner — 6 scenarios end to end
+├── config.py                 # LLM mode toggle, thresholds
+├── llm_interface.py          # The ONLY file that calls an LLM (stub or Gemini)
+├── feedback_store.py         # Persists accept/reject/correct, reweights future runs
+├── semantic_contract.json    # KPI definitions, grains, owners, entitlements
+├── data/
+│   └── generate_data.py      # Synthetic data generator (sample-data mode)
+├── pipeline/
+│   ├── fuse.py                # Loads sources; parses uploaded CSVs; retrieves evidence
+│   ├── detect.py              # Statistical anomaly detection (z-score, no LLM)
+│   ├── attribute.py           # Driver ranking / segment decomposition (no LLM)
+│   ├── narrate.py             # Persona-specific narrative (the only LLM-calling stage)
+│   └── act.py                 # Structured recommendation + entitlement checks
+└── outputs/                   # Generated at runtime: telemetry, feedback logs
+```
+---
+How it works
+The 5 stages
+Stage	What it does	Uses an LLM?
+Fuse	Loads KPI data + evidence sources (support tickets, memos), or an uploaded CSV	No
+Detect	Z-score anomaly detection against trailing history; flags insufficient-history KPIs separately	No
+Attribute	Ranks candidate causes by evidence support; computes segment decomposition (e.g. which region drove the change)	No
+Narrate	Turns the already-computed facts into a persona-specific story, with citations. Abstains (skips the LLM call) if confidence is low or evidence is ambiguous	Yes — only stage that does
+Act	Builds a structured recommendation (driver → lever → action → impact → owner → confidence → monitoring plan); enforces role-based entitlements	No
+Core design rule: the LLM is never the source of quantitative truth. All numbers, classifications, and driver rankings are computed by statistics and rule-based logic before the LLM is ever called — its only job is to phrase already-verified facts, never to decide what's true.
+Upload mode vs. sample-data mode
+Upload mode works on any CSV (auto-detects date/KPI/segment columns) but is intentionally honest about its limits: with no predefined domain knowledge, it can flag that something moved and cite nearby evidence, but can't invent a specific named cause, owner, or business lever it has no basis for.
+Sample-data mode uses a maintained `semantic_contract.json` (KPI definitions, owners, access rules) and a curated evidence set, which is what allows the fuller behaviors — ranked driver attribution with confidence scores, specific lever-mapped recommendations, and entitlement enforcement.
+The 6 built-in demo scenarios (sample-data mode, via `python main.py`)
+Scenario	What it proves
+A — Northeast revenue drop	High-confidence, multi-factor attribution (carrier delay correctly isolated over red herrings)
+B — Product engagement dip	Genuine ambiguity — two causes score too close to call, system presents both instead of guessing
+C — New feature adoption	Sparse history (only 3 data points) — system refuses to force a confidence score
+D — Entitlement check	Product Lead correctly denied access to a Finance-owned KPI
+E — SMB churn spike	Multi-segment decomposition by customer tier
+F — Social conversion drop	Multi-segment decomposition by marketing channel, new driver type
+Feedback loop
+Accepting, rejecting, or correcting a recommendation in the UI persists to `outputs/driver_weight_adjustments.json` and measurably changes driver scoring on the next run — this is a real mechanism, not a logged-but-unused event.
+Telemetry
+Every LLM call logs backend, latency, approximate token count, and estimated cost to `outputs/telemetry.jsonl`, summarized at the end of every `main.py` run and visible in the app's telemetry panel.
+---
+Using real Gemini narration
+By default, `LUCID_LLM_MODE=stub` — a free, instant, template-based response used for all development and testing. To use real Gemini calls (recommended only when recording a final demo, to conserve API usage):
+```bash
+export GEMINI_API_KEY="your-key"        # get one free at aistudio.google.com/apikey
+export LUCID_LLM_MODE=gemini
+streamlit run app.py
+```
+---
+Known limitations (stated explicitly, not hidden)
+Retrieval is keyword + date-window matching, not embedding-based semantic search. Sufficient to prove the mechanism; a production system would swap this for a vector search, same interface.
+Upload mode cannot assign a specific business lever or owner for unknown data — this is a deliberate honesty constraint, not an oversight (see "Upload mode vs. sample-data mode" above).
+Feedback mechanism uses simple weight nudges (+/- per accept/reject/correct) rather than a trained model — proves the mechanism at prototype scale; a production version would use a proper ML model over accumulated feedback.
+Evidence sources are limited to two types (structured KPI table + free-text memos/tickets) in the sample data; the schema generalizes to more source types without pipeline changes.
+---
+Team / Submission
+Built for Accenture Innovation Challenge 2026, Round 2 — BusinessIntelligence.ai (PS-3).
