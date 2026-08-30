@@ -139,4 +139,4 @@ streamlit run app.py
 
 ## Team / Submission
 
-Built for Accenture Innovation Challenge 2026, Round 2 — BusinessIntelligence.ai (PS-3).
+Built for Accenture Innovation Challenge 2026, Round 2 — BusinessIntelligence.ai (PS-3) by Team Reinventors
