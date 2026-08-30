@@ -1,6 +1,6 @@
 # LUCID — Language-driven Understanding & Causal Insight Discovery
 
-**Accenture Innovation Challenge 2026 — Round 2 Prototype**  
+**Accenture Innovation Challenge 2026 — Round 2 - Team Reinventors**  
 **Problem Statement:** BusinessIntelligence.ai (PS-3)
 
 LUCID is a working prototype that converts KPI anomalies into **evidence-backed explanations and actionable recommendations**. Instead of stopping at *“revenue is down 8%”*, it determines whether the change is statistically significant, identifies and ranks likely drivers, retrieves supporting evidence, explains the finding for the relevant persona, and recommends a concrete next action.
